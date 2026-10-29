@@ -31,6 +31,28 @@ const cover = (src, title, ref = "") =>
   src
     ? `<img class="book-cover" ${ref ? `data-open-book="${ref}"` : ""} loading="lazy" src="${esc(src)}" alt="Tapa de ${esc(title)}" onerror="this.onerror=null;const d=document.createElement('div');d.className='book-cover cover-placeholder';d.textContent=this.alt.replace('Tapa de ','');if(this.dataset.openBook)d.dataset.openBook=this.dataset.openBook;this.replaceWith(d)">`
     : `<div class="book-cover cover-placeholder" ${ref ? `data-open-book="${ref}"` : ""}>${esc(title)}</div>`;
+const svg = (d, size = 18) => `<svg class="ico" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ico = {
+  heart: svg('<path d="M12 20s-7-4.4-7-10a4.2 4.2 0 0 1 7-3 4.2 4.2 0 0 1 7 3c0 5.6-7 10-7 10z"/>'),
+  heartFill: svg('<path d="M12 20s-7-4.4-7-10a4.2 4.2 0 0 1 7-3 4.2 4.2 0 0 1 7 3c0 5.6-7 10-7 10z" fill="currentColor"/>'),
+  comment: svg('<path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>'),
+  repost: svg('<path d="M17 3l3 3-3 3"/><path d="M4 11V9a3 3 0 0 1 3-3h13"/><path d="M7 21l-3-3 3-3"/><path d="M20 13v2a3 3 0 0 1-3 3H4"/>'),
+  more: svg('<circle cx="5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  quote: svg('<path d="M9 7H6a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3v1a3 3 0 0 1-3 3"/><path d="M19 7h-3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3v1a3 3 0 0 1-3 3"/>'),
+  list: svg('<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/>'),
+  check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  book: svg('<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4z"/><path d="M5 17a3 3 0 0 1 3-3h10"/>'),
+  pencil: svg('<path d="M4 20l1-4L16 5l3 3L8 19z"/>'),
+  trash: svg('<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>'),
+  search: svg('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/>'),
+  home: svg('<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>'),
+  diary: svg('<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 4v16M12 9h4M12 13h4"/>'),
+  shelf: svg('<path d="M5 4v16M10 4v16M15 6l4 14"/>'),
+  users: svg('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 0 1 0 6M18 14c2 .8 3 2.6 3 6"/>'),
+  user: svg('<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>'),
+};
+const moreMenu = (items) => `<div class="more-wrap"><button class="action-btn more-btn" data-more aria-haspopup="menu" aria-expanded="false" aria-label="Más opciones">${ico.more}</button><div class="pop-menu" role="menu">${items}</div></div>`;
 function pl(u) {
   return u?.username ? ` data-open-profile="${esc(u.username)}"` : "";
 }
@@ -124,12 +146,6 @@ async function loadOwn() {
   $("#year-goal").innerHTML = goal
     ? `${n >= goal ? "¡Meta cumplida!" : `Meta: ${goal} libros · te faltan ${goal - n}`} <button class="text-btn" data-action="edit-profile">Cambiar</button>`
     : '<button class="text-btn" data-action="edit-profile">Definir mi meta del año</button>';
-  const open = myReadings.filter((x) => !x.finishedAt);
-  $("#rail-reading").innerHTML =
-    `<div class="rail-title-row"><h3>Leyendo ahora</h3></div>` +
-    (open.length
-      ? open.slice(0, 3).map((x) => `<div class="rail-read">${cover(x.book?.cover, x.book?.title || "Libro", bookRef(x.book || {}, x.bookId))}<div><strong>${esc(x.book?.title || "")}</strong><small class="quiet">Desde ${fmtDay(x.startedAt || x.createdAt)}</small></div><button class="follow-mini" data-finish="${x.id}">Terminé</button></div>`).join("")
-      : '<div class="quiet">No tenés ningún libro en curso.</div><button class="button small primary" data-action="new-reading" style="margin-top:10px">Empezar un libro</button>');
 }
 async function loadSuggestions() {
   try {
@@ -163,7 +179,7 @@ async function renderPage(page, keep) {
     if (page === "home") {
       const d = await api("/api/feed"),
         feed = d.items || [];
-      root.innerHTML = `<section class="hero-card"><div class="eyebrow">UN LUGAR PARA TUS HISTORIAS</div><h2>Hola, ${esc(me.displayName.split(" ")[0])} ☁️</h2><p>¿Qué libro te está acompañando hoy?</p><button class="button primary" data-action="new-quote">❝ Guardar una frase</button> <button class="button" data-action="new-reading">＋ Registrar lectura</button> <button class="button" data-action="new-post">✎ Compartir algo</button></section>${readingNowHtml()}<div class="section-heading"><h2>Tu actividad lectora</h2><button data-page="discover">Encontrar lectoras →</button></div>${feed.length ? feed.map((i) => (i.type === "post" ? postActivity(i.data) : activity(i.data))).join("") : empty("📚", "Tu feed está listo para llenarse", "Seguí a gente lectora para ver qué están leyendo, sus reseñas y publicaciones.", '<button class="button primary" data-page="discover">Encontrar gente</button>')}</section>`;
+      root.innerHTML = `${heading("HOLA, " + esc(me.displayName.split(" ")[0]).toUpperCase(), "Lo que estás leyendo", "")}${readingNowHtml(false) || startCard()}<div class="section-heading"><h2>Tu actividad lectora</h2><button data-page="discover">Encontrar lectoras →</button></div>${feed.length ? feed.map((i) => (i.type === "post" ? postActivity(i.data) : activity(i.data))).join("") : empty("📚", "Tu feed está listo para llenarse", "Seguí a gente lectora para ver qué están leyendo, sus reseñas y publicaciones.", '<button class="button primary" data-page="discover">Encontrar gente</button>')}</section>`;
     } else if (page === "diary") {
       const entries = [
         ...myReadings.map((r) => ({ at: r.createdAt, html: activity({ ...r, user: me, likes: r.likes || 0, comments: r.comments || [] }) })),
@@ -174,7 +190,7 @@ async function renderPage(page, keep) {
           "TUS PÁGINAS",
           "Diario lector",
           "Cada lectura, con su propia historia.",
-          '<button class="button primary" data-action="new-quote">❝ Guardar una frase</button> <button class="button" data-action="new-reading">＋ Registrar lectura</button>',
+          "",
         ) +
         readingNowHtml() +
         (entries.length
@@ -198,15 +214,15 @@ async function renderPage(page, keep) {
         base = s.view === "wish" ? wishAll : mineAll,
         apply = (list, skip) => list.filter((b) => (skip === "fmt" || !s.fmt || tests["fmt:" + s.fmt](b)) && (skip === "st" || !s.st || tests["st:" + s.st](b))),
         items = apply(base),
-        count = (key, skip) => apply(base, skip).filter(tests[key]).length,
+        cnt = (list, key) => (s.fmt ? list.filter(tests["fmt:" + s.fmt]) : list).filter(key ? tests[key] : () => true).length,
         chip = (key, label, n, on, cls = "") => `<button class="shelf-tab ${cls}${on ? " active" : ""}" data-sf="${key}" aria-pressed="${on}">${label} · ${n}</button>`;
       root.innerHTML =
-        heading("MIS LIBROS", "Tu estantería", "", '<button class="button primary" data-action="search-book">＋ Agregar libro</button>') +
-        `<div class="shelf-filters">${chip("all", "Todos", mineAll.length, s.view === "mine" && !s.fmt && !s.st)}<span class="sf-group" role="group" aria-label="Formato">${chip("fmt:paper", "Papel", count("fmt:paper", "fmt"), s.fmt === "paper", "f-paper")}${chip("fmt:digital", "Digital", count("fmt:digital", "fmt"), ["digital", "ebook", "audio"].includes(s.fmt), "f-digital")}</span>${["digital", "ebook", "audio"].includes(s.fmt) ? `<span class="sf-group" role="group" aria-label="Tipo de digital">${chip("fmt:ebook", "Ebook", count("fmt:ebook", "fmt"), s.fmt === "ebook", "f-digital")}${chip("fmt:audio", "Audiolibro", count("fmt:audio", "fmt"), s.fmt === "audio", "f-audio")}</span>` : ""}${s.view === "mine" ? `<span class="sf-group" role="group" aria-label="Estado">${chip("st:read", "Leídos", count("st:read", "st"), s.st === "read")}${chip("st:unread", "Sin leer", count("st:unread", "st"), s.st === "unread")}${chip("st:borrowed", "Prestados", count("st:borrowed", "st"), s.st === "borrowed")}</span>` : ""}<span class="sf-group">${chip("view:wish", "Wishlist", wishAll.length, s.view === "wish")}</span></div>` +
+        heading("MIS LIBROS", "Tu estantería", "") +
+        `<div class="shelf-filters"><div class="shelf-tabs" role="group" aria-label="Estado">${chip("all", "Todos", cnt(mineAll), s.view === "mine" && !s.st)}${chip("st:read", "Leídos", cnt(mineAll, "st:read"), s.view === "mine" && s.st === "read")}${chip("st:unread", "Sin leer", cnt(mineAll, "st:unread"), s.view === "mine" && s.st === "unread")}${chip("st:borrowed", "Prestados", cnt(mineAll, "st:borrowed"), s.view === "mine" && s.st === "borrowed")}${chip("view:wish", "Wishlist", cnt(wishAll), s.view === "wish")}</div><label class="fmt-filter"><span class="sr-only">Formato</span><select data-fmt-select aria-label="Formato">${[["", "Todos los formatos"], ["paper", "Papel"], ["digital", "Digital"], ["ebook", "Ebook"], ["audio", "Audiolibro"]].map(([v, l]) => `<option value="${v}" ${s.fmt === v ? "selected" : ""}>${l}</option>`).join("")}</select></label></div>` +
         (items.length
           ? `<div class="book-grid">${items.map(shelfCard).join("")}<button class="shelf-add" data-action="search-book">＋ Agregar libro</button></div>`
           : base.length
-            ? empty("▥", "No hay libros con esos filtros", "Probá sacando alguno.", '<button class="button" data-sf="all">Ver todos</button>')
+            ? empty("▥", "No hay libros con esos filtros", "Probá sacando alguno.", '<button class="button" data-sf="reset">Ver todos</button>')
             : empty(s.view === "wish" ? "♡" : "▥", s.view === "wish" ? "Tu wishlist está en blanco" : "Todavía no hay libros", s.view === "wish" ? "Buscá un libro para guardarlo en tu wishlist." : "Agregá los libros que tenés, en papel o digitales.", '<button class="button primary" data-action="search-book">Buscar libros</button>'));
     } else if (page === "discover") {
       root.innerHTML =
@@ -255,15 +271,19 @@ async function renderPage(page, keep) {
     );
   }
 }
-function readingNowHtml() {
+function readingNowHtml(withHeading = true) {
   const open = myReadings.filter((r) => !r.finishedAt);
   if (!open.length) return "";
-  return `<div class="section-heading"><h2>Leyendo ahora</h2></div><div class="now-row">${open
+  return `${withHeading ? '<div class="section-heading"><h2>Leyendo ahora</h2></div>' : ""}<div class="now-row">${open
     .map((r) => {
-      const b = r.book || {}, ref = bookRef(b, r.bookId);
-      return `<div class="now-card"><div class="now-top">${cover(b.cover, b.title || "Libro", ref)}<div class="now-info"><strong data-open-book="${ref}">${esc(b.title || "")}</strong><small>${esc(b.author || "")}</small><small>Desde el ${fmtDay(r.startedAt || r.createdAt)}</small><button class="button primary small" data-finish="${r.id}">✓ Terminé</button></div></div><form class="quick-quote" data-quick-quote="${r.id}"><input name="text" placeholder="Guardar una frase…" maxlength="1600" aria-label="Frase de ${esc(b.title || "este libro")}"><input name="page" class="qp" inputmode="numeric" maxlength="6" placeholder="pág." aria-label="Página"><label class="qs"><input type="checkbox" name="spoilers"> spoiler</label><button class="button primary small" aria-label="Guardar frase">＋</button></form></div>`;
+      const b = r.book || {}, ref = bookRef(b, r.bookId),
+        lastQ = myPosts.find((p) => p.kind === "quote" && p.book?.key === r.bookId && p.page);
+      return `<div class="now-card"><div class="now-top">${cover(b.cover, b.title || "Libro", ref)}<div class="now-info"><strong data-open-book="${ref}">${esc(b.title || "")}</strong><small>${esc(b.author || "")}</small><small>Desde el ${fmtDay(r.startedAt || r.createdAt)}${lastQ ? ` · última frase en la pág. ${esc(lastQ.page)}` : ""}</small><button class="button primary small finish-btn" data-finish="${r.id}">${ico.check} Terminé</button></div></div><form class="quick-quote" data-quick-quote="${r.id}"><input name="text" placeholder="Guardar una frase…" maxlength="1600" aria-label="Frase de ${esc(b.title || "este libro")}"><input name="page" class="qp" inputmode="numeric" maxlength="6" placeholder="pág." aria-label="Página"><label class="qs"><input type="checkbox" name="spoilers"> spoiler</label><button class="button primary small" aria-label="Guardar frase">${ico.plus}</button></form></div>`;
     })
     .join("")}</div>`;
+}
+function startCard() {
+  return `<section class="start-card"><h2>¿Qué libro vas a leer?</h2><p>Buscalo y empezá a guardar tus frases mientras leés.</p><button class="button primary add-btn" data-action="find-book">${ico.search} Buscar un libro</button></section>`;
 }
 function activity(r) {
   const u = r.user || me,
@@ -278,7 +298,7 @@ function activity(r) {
         ? `<details class="spoiler"><summary>Reseña con spoilers · tocá para verla</summary><div>${esc(r.review)}</div></details>`
         : `<div style="margin-top:6px">${esc(r.review)}</div>`
       : "";
-  return `<article class="activity-card" data-reading="${r.id}"><div class="activity-top">${avatar(u)}<div class="activity-by"><strong${pl(u)}>${esc(u.displayName || u.username)}</strong> ${open ? "empezó a leer" : "terminó un libro"}<small>${when(date)} ${r.format === "audio" ? "· Audiolibro" : r.format === "ebook" ? "· Ebook" : "· Papel"}${r.reread ? " · Relectura" : ""}</small></div><span class="activity-tag">${r.medium === "library" ? "Biblioteca" : r.medium === "borrowed" ? "Prestado" : r.medium === "app" ? "En app" : "Propio"}</span></div><div class="activity-body">${cover(book.cover, title, ref)}<div class="review-copy"><div class="book-name" data-open-book="${ref}">${esc(title)}</div><div class="book-author">${esc(book.author || "Autoría desconocida")}</div>${stars(+r.rating)}${open ? `<div class="reading-since">Leyéndolo desde el ${fmtDay(r.startedAt || r.createdAt)}</div>` : ""}${review}</div></div><div class="activity-actions"><button class="action-btn ${r.liked ? "liked" : ""}" data-like="${r.id}">${r.liked ? "♥" : "♡"} ${r.likes || 0} Me gusta</button><button class="action-btn" data-focus-comment="${r.id}">☷ ${r.comments?.length || 0} comentarios</button>${mine && open ? `<button class="action-btn strong" data-finish="${r.id}">✓ Terminé</button>` : ""}${mine ? `<button class="action-btn" data-edit-reading="${r.id}">✎ Editar</button>` : ""}</div><div class="comments" id="comments-${r.id}">${(r.comments || []).slice(-3).map(commentHtml).join("")}<form class="comment-form" data-comment="${r.id}"><input name="text" placeholder="Dejá un comentario…" maxlength="800"><button>Enviar</button></form></div></article>`;
+  return `<article class="activity-card" data-reading="${r.id}"><div class="activity-top">${avatar(u)}<div class="activity-by"><strong${pl(u)}>${esc(u.displayName || u.username)}</strong> ${open ? "empezó a leer" : "terminó un libro"}<small>${when(date)} ${r.format === "audio" ? "· Audiolibro" : r.format === "ebook" ? "· Ebook" : "· Papel"}${r.reread ? " · Relectura" : ""}</small></div><span class="activity-tag">${r.medium === "library" ? "Biblioteca" : r.medium === "borrowed" ? "Prestado" : r.medium === "app" ? "En app" : "Propio"}</span></div><div class="activity-body">${cover(book.cover, title, ref)}<div class="review-copy"><div class="book-name" data-open-book="${ref}">${esc(title)}</div><div class="book-author">${esc(book.author || "Autoría desconocida")}</div>${stars(+r.rating)}${open ? `<div class="reading-since">Leyéndolo desde el ${fmtDay(r.startedAt || r.createdAt)}</div>` : ""}${review}${mine && open ? `<button class="button primary small finish-btn" data-finish="${r.id}">${ico.check} Terminé</button>` : ""}</div></div><div class="activity-actions"><button class="action-btn ${r.liked ? "liked" : ""}" data-like="${r.id}" aria-label="Me gusta, ${r.likes || 0}">${r.liked ? ico.heartFill : ico.heart}<span>${r.likes || 0}</span></button><button class="action-btn" data-focus-comment="${r.id}" aria-label="Comentarios, ${r.comments?.length || 0}">${ico.comment}<span>${r.comments?.length || 0}</span></button>${mine ? moreMenu(`<button role="menuitem" data-edit-reading="${r.id}">${ico.pencil} Editar</button><button role="menuitem" class="danger" data-del-reading="${r.id}">${ico.trash} Borrar</button>`) : ""}</div><div class="comments" id="comments-${r.id}">${(r.comments || []).slice(-3).map(commentHtml).join("")}<form class="comment-form" data-comment="${r.id}"><input name="text" placeholder="Dejá un comentario…" maxlength="800"><button>Enviar</button></form></div></article>`;
 }
 function quoteBlock(p, mine) {
   const inner = `<blockquote>${esc(p.text)}</blockquote>`;
@@ -315,7 +335,7 @@ function postActivity(p) {
         commentHtml(c),
     )
     .join("");
-  return `<article class="activity-card post-card${p.kind === "quote" ? " quote-card" : ""}" data-post="${p.id}"><div class="activity-top">${avatar(u)}<div class="activity-by"><strong${pl(u)}>${esc(u.displayName || u.username)}</strong> ${p.kind === "repost" ? "reposteó" : p.kind === "quote" ? "guardó una frase" : "compartió algo"}<small>${when(p.createdAt)}${p.spoilers ? " · Spoiler" : ""}</small></div>${p.kind === "quote" ? "" : `<span class="activity-tag">${p.kind === "repost" ? "Repost" : "Nota"}</span>`}</div>${p.kind === "repost" && p.text ? `<div class="repost-note">${esc(p.text)}</div>` : ""}${content}<div class="activity-actions"><button class="action-btn ${p.liked ? "liked" : ""}" data-like-post="${p.id}">${p.liked ? "♥" : "♡"} ${p.likes || 0} Me gusta</button><button class="action-btn" data-focus-post-comment="${p.id}">☷ ${p.comments?.length || 0} comentarios</button><button class="action-btn" data-repost="${p.id}">↻ Repostear</button>${mine ? `<button class="action-btn" data-edit-post="${p.id}">✎ Editar</button><button class="action-btn" data-del-post="${p.id}">🗑 Borrar</button>` : ""}</div><div class="comments" id="post-comments-${p.id}">${comments}<form class="comment-form" data-post-comment="${p.id}"><input name="text" placeholder="Dejá un comentario…" maxlength="800"><button>Enviar</button></form></div></article>`;
+  return `<article class="activity-card post-card${p.kind === "quote" ? " quote-card" : ""}" data-post="${p.id}"><div class="activity-top">${avatar(u)}<div class="activity-by"><strong${pl(u)}>${esc(u.displayName || u.username)}</strong> ${p.kind === "repost" ? "reposteó" : p.kind === "quote" ? "guardó una frase" : "compartió algo"}<small>${when(p.createdAt)}${p.spoilers ? " · Spoiler" : ""}</small></div>${p.kind === "quote" ? "" : `<span class="activity-tag">${p.kind === "repost" ? "Repost" : "Nota"}</span>`}</div>${p.kind === "repost" && p.text ? `<div class="repost-note">${esc(p.text)}</div>` : ""}${content}<div class="activity-actions"><button class="action-btn ${p.liked ? "liked" : ""}" data-like-post="${p.id}" aria-label="Me gusta, ${p.likes || 0}">${p.liked ? ico.heartFill : ico.heart}<span>${p.likes || 0}</span></button><button class="action-btn" data-focus-post-comment="${p.id}" aria-label="Comentarios, ${p.comments?.length || 0}">${ico.comment}<span>${p.comments?.length || 0}</span></button><button class="action-btn" data-repost="${p.id}" aria-label="Repostear">${ico.repost}</button>${mine ? moreMenu(`<button role="menuitem" data-edit-post="${p.id}">${ico.pencil} Editar</button><button role="menuitem" class="danger" data-del-post="${p.id}">${ico.trash} Borrar</button>`) : ""}</div><div class="comments" id="post-comments-${p.id}">${comments}<form class="comment-form" data-post-comment="${p.id}"><input name="text" placeholder="Dejá un comentario…" maxlength="800"><button>Enviar</button></form></div></article>`;
 }
 function shelfCard(b) {
   const fmt = b.format === "audio" ? "audio" : b.format === "ebook" || b.format === "digital" ? "ebook" : "paper",
@@ -640,7 +660,9 @@ async function bookPage(ref, o = {}) {
     wish = shelf?.ownership === "wishlist",
     owned = !!shelf && !wish,
     avg = info.avg || 0,
-    cnt = info.count || 0;
+    cnt = info.count || 0,
+    state = open ? "reading" : done.length ? "read" : wish ? "wish" : "",
+    copyFmt = owned ? (shelf.format === "audio" ? "audio" : shelf.format === "ebook" || shelf.format === "digital" ? "ebook" : "paper") : "none";
   const qs = info.quotes || [];
   qs.forEach((q) => postCache.set(q.id, q));
   const myQ = qs.filter((q) => q.userId === me.id),
@@ -665,7 +687,7 @@ async function bookPage(ref, o = {}) {
     reviews = (info.reviews || [])
       .map((r) => `<article class="bk-review">${avatar(r.user || {})}<div><div><strong${pl(r.user)}>${esc(r.user?.displayName || r.user?.username || "")}</strong> ${stars(+r.rating)} <small class="quiet">${when(r.finishedAt || r.createdAt)}</small></div>${r.spoilers && r.userId !== me.id ? `<details class="spoiler"><summary>Reseña con spoilers · tocá para verla</summary><div>${esc(r.review)}</div></details>` : `<p>${esc(r.review)}</p>`}</div></article>`)
       .join("");
-  $("#modal-content").innerHTML = `<div class="bk-sheet"><div class="bk-head">${cover(ref.cover, ref.title || "Libro")}<div><h1>${esc(ref.title || "")}</h1><div class="bk-author">${esc(ref.author || "Autoría desconocida")}</div><div class="big-rating tip" tabindex="0" data-tip="Promedio calculado solo con las puntuaciones de Bookish. No incluye otras plataformas.">${cnt ? `<strong>${avg.toFixed(1).replace(".", ",")}</strong><div>${stars(Math.round(avg * 2) / 2)}<small>${cnt} ${cnt === 1 ? "puntuación" : "puntuaciones"} en Bookish ⓘ</small></div>` : "<small>Todavía sin puntuaciones en Bookish ⓘ</small>"}</div><small class="quiet">${info.readers || 0} ${info.readers === 1 ? "persona lo leyó" : "personas lo leyeron"} · ${info.readingNow || 0} leyéndolo ahora</small>${subjects.length ? `<div class="chips">${subjects.map((s) => `<span>${esc(s)}</span>`).join("")}</div>` : ""}</div></div>${desc ? `<p class="synopsis" id="synopsis">${esc(desc)}</p>${desc.length > 320 ? '<button class="text-btn" id="syn-more">Leer más</button>' : ""}` : `<p class="quiet" style="margin-top:14px">${works ? "Todavía no hay sinopsis para este libro en Open Library." : "Este libro se cargó a mano, así que no tiene sinopsis."}</p>`}<div class="bk-actions"><button class="chip-btn ${wish ? "on" : ""}" data-bk="wish">${wish ? "♥" : "♡"} Quiero leerlo</button><button class="chip-btn ${owned ? "on" : ""}" data-bk="own">▥ Lo tengo${owned ? " · " + ({ ebook: "Ebook", digital: "Ebook", audio: "Audiolibro" }[shelf.format] || "Papel") : ""}</button>${open ? '<button class="button primary" data-bk="finish">✓ Terminé</button>' : '<button class="button primary" data-bk="start">Empecé a leerlo</button>'}<button class="button" data-bk="log">Ya lo leí</button><button class="button" data-bk="quote">❝ Frase</button><button class="button" data-bk="list">☷ Agregar a lista</button></div>${o.own ? '<div class="bk-lists"><span class="quiet" style="align-self:center">¿En qué formato lo tenés?</span><button class="chip-btn fmt-paper" data-bk="own-paper">Papel</button><button class="chip-btn fmt-digital" data-bk="own-ebook">Ebook</button><button class="chip-btn fmt-audio" data-bk="own-audio">Audiolibro</button></div>' : ""}${o.lists ? `<div class="bk-lists">${(info.lists || []).map((l) => `<button class="chip-btn ${l.has ? "on" : ""}" data-bk-list="${l.id}">${l.has ? "✓" : "＋"} ${esc(l.title)}</button>`).join("") || '<span class="quiet">Todavía no tenés listas.</span>'}<button class="chip-btn" data-bk="newlist">＋ Nueva lista</button></div>` : ""}<div class="field"><label>Tu puntuación</label>${starPicker(last?.rating || 0, "bk-stars")}</div>${journal ? `<h3 class="bk-section">Tu diario de este libro</h3><div class="journal">${journal}</div>` : ""}${otherQ.length ? `<h3 class="bk-section">Frases de otros lectores</h3>${otherQ.map((q) => `<article class="bk-review">${avatar(q.user || {})}<div><strong${pl(q.user)}>${esc(q.user?.displayName || q.user?.username || "")}</strong> <small class="quiet">${q.page ? "pág. " + esc(q.page) : ""}</small>${quoteBlock(q, false)}</div></article>`).join("")}` : ""}<h3 class="bk-section">Reseñas</h3>${reviews || '<p class="quiet">Todavía no hay reseñas de este libro.</p>'}</div>`;
+  $("#modal-content").innerHTML = `<div class="bk-sheet"><div class="bk-head">${cover(ref.cover, ref.title || "Libro")}<div><h1>${esc(ref.title || "")}</h1><div class="bk-author">${esc(ref.author || "Autoría desconocida")}</div><div class="big-rating tip" tabindex="0" data-tip="Promedio calculado solo con las puntuaciones de Bookish. No incluye otras plataformas.">${cnt ? `<strong>${avg.toFixed(1).replace(".", ",")}</strong><div>${stars(Math.round(avg * 2) / 2)}<small>${cnt} ${cnt === 1 ? "puntuación" : "puntuaciones"} en Bookish ⓘ</small></div>` : "<small>Todavía sin puntuaciones en Bookish ⓘ</small>"}</div><small class="quiet">${info.readers || 0} ${info.readers === 1 ? "persona lo leyó" : "personas lo leyeron"} · ${info.readingNow || 0} leyéndolo ahora</small>${subjects.length ? `<div class="chips">${subjects.map((s) => `<span>${esc(s)}</span>`).join("")}</div>` : ""}</div></div>${desc ? `<p class="synopsis" id="synopsis">${esc(desc)}</p>${desc.length > 320 ? '<button class="text-btn" id="syn-more">Leer más</button>' : ""}` : `<p class="quiet" style="margin-top:14px">${works ? "Todavía no hay sinopsis para este libro en Open Library." : "Este libro se cargó a mano, así que no tiene sinopsis."}</p>`}<div class="bk-block"><div class="bk-label">Mi lectura</div><div class="seg-btns" style="grid-template-columns:repeat(3,1fr)" role="group" aria-label="Estado de lectura">${[["wish", "Quiero leerlo"], ["reading", "Leyendo"], ["read", "Leído"]].map(([v, l]) => `<button type="button" class="${state === v ? "on" : ""}" aria-pressed="${state === v}" data-bk="state-${v}">${l}</button>`).join("")}</div></div><div class="bk-block"><div class="bk-label">Mi copia</div><div class="seg-btns" style="grid-template-columns:repeat(4,1fr)" role="group" aria-label="Formato de tu copia">${[["none", "No la tengo"], ["paper", "Papel"], ["ebook", "Ebook"], ["audio", "Audiolibro"]].map(([v, l]) => `<button type="button" class="${copyFmt === v ? "on" : ""}" aria-pressed="${copyFmt === v}" data-bk="copy-${v}">${l}</button>`).join("")}</div>${copyFmt === "paper" ? `<label class="chk"><input type="checkbox" data-bk="lent" ${shelf.ownership === "borrowed" ? "checked" : ""}> Está prestado</label>` : ""}</div><div class="bk-tools"><button class="button" data-bk="list">${ico.list} Agregar a lista</button><button class="button" data-bk="quote">${ico.quote} Guardar una frase</button></div>${o.lists ? `<div class="bk-lists">${(info.lists || []).map((l) => `<button class="chip-btn ${l.has ? "on" : ""}" data-bk-list="${l.id}">${l.has ? "✓" : "＋"} ${esc(l.title)}</button>`).join("") || '<span class="quiet">Todavía no tenés listas.</span>'}<button class="chip-btn" data-bk="newlist">＋ Nueva lista</button></div>` : ""}<div class="field"><label>Tu puntuación</label>${starPicker(last?.rating || 0, "bk-stars")}</div>${journal ? `<h3 class="bk-section">Tu diario de este libro</h3><div class="journal">${journal}</div>` : ""}${otherQ.length ? `<h3 class="bk-section">Frases de otros lectores</h3>${otherQ.map((q) => `<article class="bk-review">${avatar(q.user || {})}<div><strong${pl(q.user)}>${esc(q.user?.displayName || q.user?.username || "")}</strong> <small class="quiet">${q.page ? "pág. " + esc(q.page) : ""}</small>${quoteBlock(q, false)}</div></article>`).join("")}` : ""}<h3 class="bk-section">Reseñas</h3>${reviews || '<p class="quiet">Todavía no hay reseñas de este libro.</p>'}</div>`;
   const again = (x) => bookPage(ref, x),
     reload = async (x) => {
       await loadOwn();
@@ -694,24 +716,38 @@ async function bookPage(ref, o = {}) {
           toast("Lectura registrada con tu puntuación");
         }
         await reload(o);
-      } else if (bk === "wish") {
-        if (wish) await api("/api/shelf", { method: "DELETE", body: JSON.stringify({ id: key }) });
-        else await shelfPost("wishlist", "unread");
-        await reload(o);
-      } else if (bk === "own") {
-        if (owned) {
+      } else if (bk === "state-wish") {
+        if (wish) {
           await api("/api/shelf", { method: "DELETE", body: JSON.stringify({ id: key }) });
           await reload(o);
-        } else again({ own: true });
-      } else if (bk?.startsWith("own-")) {
-        await shelfPost("owned", done.length ? "read" : "unread", bk.slice(4));
+        } else if (open || done.length) toast("Ya empezaste este libro. Podés cambiarlo editando tu lectura.");
+        else if (owned) toast("Ya lo tenés en tu estantería.");
+        else {
+          await shelfPost("wishlist", "unread");
+          await reload(o);
+        }
+      } else if (bk === "state-reading") {
+        if (!open && (!done.length || confirm("Ya lo leíste. ¿Empezar una relectura?"))) {
+          await api("/api/readings", { method: "POST", body: JSON.stringify({ book, startedAt: today(), finishedAt: "", format: "paper", medium: "own", reread: done.length > 0 }) });
+          toast("¡A leer! Empezaste hoy");
+          await reload(o);
+        }
+      } else if (bk === "state-read") readingForm(book, open ? { finish: open, after: () => again(o) } : { status: "finished", after: () => again(o) });
+      else if (bk?.startsWith("copy-")) {
+        const f = bk.slice(5);
+        if (f === "none") {
+          if (owned) {
+            await api("/api/shelf", { method: "DELETE", body: JSON.stringify({ id: key }) });
+            await reload(o);
+          }
+        } else {
+          await shelfPost(f === "paper" && shelf?.ownership === "borrowed" ? "borrowed" : "owned", done.length || shelf?.physicalStatus === "read" ? "read" : "unread", f);
+          await reload(o);
+        }
+      } else if (bk === "lent") {
+        await shelfPost(e.target.checked ? "borrowed" : "owned", shelf?.physicalStatus || "unread");
         await reload(o);
-      } else if (bk === "start") {
-        await api("/api/readings", { method: "POST", body: JSON.stringify({ book, startedAt: today(), finishedAt: "", format: "paper", medium: "own" }) });
-        toast("¡A leer! Empezaste hoy");
-        await reload(o);
-      } else if (bk === "finish") readingForm(book, { finish: open, after: () => again(o) });
-      else if (bk === "log") readingForm(book, { status: "finished", after: () => again(o) });
+      }
       else if (bk === "list") again({ lists: !o.lists });
       else if (bk === "newlist") newList();
       else if (bl) {
@@ -755,6 +791,18 @@ async function globalSearch(q) {
     `<div class="g-title">LIBROS</div>${books === null ? '<div class="quiet" style="padding:8px 10px">No pudimos conectar con Open Library.</div>' : bookItems.join("") || '<div class="quiet" style="padding:8px 10px">Sin resultados.</div>'}` +
     `<div class="g-title">PERSONAS</div>${people.slice(0, 5).map((u) => `<button class="g-item" data-open-profile="${esc(u.username)}">${avatar(u)}<div><strong>${esc(u.displayName)}</strong><small>@${esc(u.username)}</small></div></button>`).join("") || '<div class="quiet" style="padding:8px 10px">Sin resultados.</div>'}`;
 }
+const addMenuHtml = () => `<button role="menuitem" data-action="new-reading">${ico.book} Registrar lectura</button><button role="menuitem" data-action="new-quote">${ico.quote} Guardar una frase</button><button role="menuitem" data-action="add-shelf">${ico.plus} Libro a mi estantería</button>`;
+$$(".add-menu").forEach((m) => (m.innerHTML = addMenuHtml()));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") $$(".add-menu.open,.pop-menu.open").forEach((m) => m.classList.remove("open"));
+});
+document.addEventListener("change", (e) => {
+  const fs = e.target.closest?.("[data-fmt-select]");
+  if (fs) {
+    shelfState = { ...shelfState, fmt: fs.value };
+    renderPage("shelf", true);
+  }
+});
 $("#global-q").addEventListener("input", (e) => {
   clearTimeout(gTimer);
   const q = e.target.value.trim();
@@ -1071,15 +1119,21 @@ $$(".mobile-head [data-page]").forEach(
 );
 $("#mobile-profile").onclick = () => renderPage("profile");
 document.addEventListener("click", async (e) => {
+  const tgl = e.target.closest("[data-add-toggle],[data-more]");
+  $$(".add-menu.open,.pop-menu.open").forEach((m) => {
+    if (!tgl || m.previousElementSibling !== tgl) m.classList.remove("open");
+  });
+  if (tgl) {
+    tgl.setAttribute("aria-expanded", tgl.nextElementSibling.classList.toggle("open"));
+    return;
+  }
   const sf = e.target.closest("[data-sf]");
   if (sf) {
     const [k, v] = sf.dataset.sf.split(":");
-    if (k === "all") shelfState = { view: "mine", fmt: "", st: "" };
-    else if (k === "view") shelfState = { view: shelfState.view === "wish" ? "mine" : "wish", fmt: shelfState.fmt, st: "" };
-    else if (k === "fmt") {
-      const grp = ["digital", "ebook", "audio"], cur = shelfState.fmt;
-      shelfState.fmt = v === "digital" ? (grp.includes(cur) ? "" : "digital") : v === "ebook" || v === "audio" ? (cur === v ? "digital" : v) : cur === v ? "" : v;
-    } else shelfState[k] = shelfState[k] === v ? "" : v;
+    if (k === "reset") shelfState = { view: "mine", fmt: "", st: "" };
+    else if (k === "all") shelfState = { ...shelfState, view: "mine", st: "" };
+    else if (k === "view") shelfState = { ...shelfState, view: "wish", st: "" };
+    else shelfState = { ...shelfState, view: "mine", st: v };
     renderPage("shelf", true);
     return;
   }
@@ -1102,6 +1156,20 @@ document.addEventListener("click", async (e) => {
   if (er && !e.target.closest("#modal-content .bk-sheet")) {
     const r = myReadings.find((x) => x.id === er.dataset.editReading);
     if (r) readingForm(bookOfReading(r), { edit: r });
+    return;
+  }
+  const dr = e.target.closest("[data-del-reading]");
+  if (dr) {
+    if (confirm("¿Borrar esta lectura? También se borran sus me gusta y comentarios.")) {
+      try {
+        await api("/api/readings/" + dr.dataset.delReading, { method: "DELETE" });
+        await loadOwn();
+        toast("Lectura borrada");
+        refreshPage();
+      } catch (err) {
+        toast(err.message);
+      }
+    }
     return;
   }
   const dc = e.target.closest("[data-del-comment]");
@@ -1149,6 +1217,8 @@ document.addEventListener("click", async (e) => {
   if (action === "new-reading") readingForm();
   if (action === "new-post") postComposer();
   if (action === "new-quote") quoteForm();
+  if (action === "add-shelf") searchBookModal({ ownership: "owned", physicalStatus: "unread", format: "paper", label: "Sumar a mis libros" });
+  if (action === "find-book") searchBookModal({ label: "Buscá tu próximo libro", pick: (b) => bookPage(b) });
   if (action === "search-book") searchBookModal(shelfDest());
   if (action === "edit-profile") editProfile();
   if (action === "new-list") newList();
