@@ -342,3 +342,56 @@ strong[data-open-profile]:hover,.mini-person-info[data-open-profile]:hover stron
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
+
+
+/* ===== Biblioteca: búsqueda, vistas y filtros ===== */
+.lib-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.lib-search{flex:1 1 260px;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid #cfd6cb;border-radius:999px;padding:0 16px;min-height:46px;color:var(--muted);transition:border-color .2s,box-shadow .2s}
+.lib-search:focus-within{border-color:var(--rose);box-shadow:0 0 0 4px #566d5920}
+.lib-search input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:14px;min-height:44px;color:var(--ink)}
+.lib-sort select{border:1px solid #cfd6cb;border-radius:999px;background:var(--card);padding:0 14px;min-height:46px;font-size:13px;font-weight:600;color:var(--ink)}
+.lib-view{display:inline-flex;background:#eef1ea;border-radius:999px;padding:3px}
+.lib-view button{border:0;background:none;width:42px;height:40px;border-radius:999px;color:#4f5a4d;display:grid;place-items:center}
+.lib-view button[aria-pressed=true]{background:var(--card);color:var(--ink);box-shadow:0 1px 4px #26332a1f}
+.lib-tabs{display:inline-grid;grid-auto-flow:column;gap:4px;background:#eef1ea;border-radius:12px;padding:4px;max-width:100%}
+.lib-tab{border:0;background:none;border-radius:9px;min-height:42px;padding:0 18px;font-weight:700;font-size:13px;color:#4f5a4d;transition:background .2s,color .2s,box-shadow .2s}
+.lib-tab.active{background:var(--card);color:var(--ink);box-shadow:0 1px 4px #26332a1f}
+.lib-chips{display:flex;gap:8px;align-items:center;overflow-x:auto;padding:14px 2px 4px;scrollbar-width:none}
+.lib-chips::-webkit-scrollbar{display:none}
+.lib-chips .shelf-tab{flex:0 0 auto}
+.lib-clear{flex:0 0 auto;color:var(--rose);font-weight:700}
+.lib-summary{font-size:12px;color:var(--muted);margin:8px 0 18px}
+#lib-results>*{animation:fadeIn .25s ease}
+
+/* Tarjetas alineadas: misma estructura en todas */
+.book-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:28px 20px;align-items:stretch}
+.shelf-book{display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:0;border:0;background:none;border-radius:0}
+.shelf-book .book-cover{width:100%;height:auto;aspect-ratio:2/3;object-fit:cover;margin:0 0 12px;border-radius:5px}
+.shelf-book strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font:600 14px/1.3 'Playfair Display',serif;min-height:2.6em}
+.shelf-book small{display:block;margin:2px 0 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shelf-book .tags{justify-content:flex-start;margin-top:0;min-height:28px}
+.shelf-book .card-foot,.shelf-book .wish-actions{margin-top:auto;padding-top:8px}
+.shelf-book:hover,.now-card:hover{transform:none;box-shadow:none;border-color:transparent}
+.now-card:hover{box-shadow:0 14px 30px #26332a1a}
+.shelf-book .book-cover{box-shadow:0 6px 16px #1d24201f}
+.shelf-book:hover .book-cover{box-shadow:0 14px 26px #1d242030}
+.wish-actions{justify-content:flex-start}
+.shelf-add{align-self:start;width:100%;aspect-ratio:2/3}
+
+/* Vista de lista */
+.lib-list{display:flex;flex-direction:column}
+.lib-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.lib-row .book-cover{width:44px;height:64px;box-shadow:none;border-radius:3px}
+.lib-main strong{display:block;font:600 15px/1.3 'Playfair Display',serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-main small{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-row .tags{justify-content:flex-end;margin:0}
+@media(max-width:700px){
+  .lib-row{grid-template-columns:44px minmax(0,1fr) auto}
+  .lib-row .tags{grid-column:2/4;justify-content:flex-start}
+  .book-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:22px 14px}
+}
+
+/* Formato en dos niveles: papel (prestado) y digital (ebook / audiolibro) */
+.dest-format{margin:0 0 14px}
+.dest-sub{margin-top:10px}
+.dest-sub.hidden{display:none}
