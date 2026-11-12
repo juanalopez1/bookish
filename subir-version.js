@@ -1,4 +1,4 @@
-#!/usr/bin/env node pus
+#!/usr/bin/env node
 // Sube el número de versión en un solo paso, para que las personas reciban el botón "Actualizar".
 // Uso:  node subir-version.js        (suma 1)
 //       node subir-version.js 20     (pone la 20)
