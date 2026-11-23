@@ -1,13 +1,12 @@
 {
-  "name": "bookish",
-  "main": "worker/index.mjs",
+  "name": "bookish", // nombre del proyecto, tiene que coincidir con el del worker de cloudfare
+  "main": "worker/index.mjs", // archivo de entrada del back
   "compatibility_date": "2026-11-01",
   "assets": {
+    // define el front
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*"], // marca que requests pasan por el worker (back)
   },
-  "d1_databases": [
-    { "binding": "DB", "database_name": "bookish" }
-  ]
+  "d1_databases": [{ "binding": "DB", "database_name": "bookish" }],
 }

@@ -1,6 +1,6 @@
 /* Bookish · service worker
    Para publicar una versión nueva: node subir-version.js  (sube VERSION acá y en app.js / index.html) */
-const VERSION = "12";
+const VERSION = "13";
 const CACHE = "bookish-" + VERSION;
 const SHELL = ["/", "/manifest.webmanifest", "/style.css?v=" + VERSION, "/app.js?v=" + VERSION, "/icons/icon-192.png", "/icons/icon-512.png"];
 

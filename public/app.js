@@ -257,7 +257,7 @@ async function renderPageCore(page, keep) {
     if (page === "home") {
       const d = await api("/api/feed"),
         feed = d.items || [];
-      root.innerHTML = `${heading("HOLA, " + esc(me.displayName.split(" ")[0]).toUpperCase(), "Lo que estás leyendo", "")}${readingNowHtml(false) || startCard()}${mobileRailHtml()}<div class="section-heading"><h2>Tu actividad lectora</h2><button data-page="discover">Encontrar lectoras →</button></div>${feed.length ? feed.map((i) => (i.type === "post" ? postActivity(i.data) : activity(i.data))).join("") : empty("📚", "Tu feed está listo para llenarse", "Seguí a gente lectora para ver qué están leyendo, sus reseñas y publicaciones.", '<button class="button primary" data-page="discover">Encontrar gente</button>')}</section>`;
+      root.innerHTML = `${heading("HOLA, " + esc(me.displayName.split(" ")[0]).toUpperCase(), "Lo que estás leyendo", "")}${installCardHtml()}${readingNowHtml(false) || startCard()}${mobileRailHtml()}<div class="section-heading"><h2>Tu actividad lectora</h2><button data-page="discover">Encontrar lectoras →</button></div>${feed.length ? feed.map((i) => (i.type === "post" ? postActivity(i.data) : activity(i.data))).join("") : empty("📚", "Tu feed está listo para llenarse", "Seguí a gente lectora para ver qué están leyendo, sus reseñas y publicaciones.", '<button class="button primary" data-page="discover">Encontrar gente</button>')}</section>`;
     } else if (page === "diary") {
       const entries = [
         ...myReadings.map((r) => ({ at: r.createdAt, html: activity({ ...r, user: me, likes: r.likes || 0, comments: r.comments || [] }) })),
@@ -1536,6 +1536,13 @@ document.addEventListener("click", async (e) => {
   if (action === "edit-profile") editProfile();
   if (action === "new-list") newList();
   if (action === "check-update") checkUpdate(true);
+  if (action === "install") installApp();
+  if (action === "install-dismiss") {
+    try {
+      localStorage.setItem("bookish.installDismissed", String(Date.now()));
+    } catch {}
+    if (currentPage === "home") refreshPage();
+  }
   if (action === "logout") doLogout();
   const ng = e.target.closest("[data-nav-go]");
   if (ng) {
@@ -1793,7 +1800,7 @@ async function doLogout() {
 $("#logout").onclick = doLogout;
 function accountMenu() {
   const it = (go, label, icon) => `<button type="button" class="acct-item" data-nav-go="${go}">${icon}<span>${label}</span></button>`;
-  openModal("Tu cuenta", "@" + me.username.toUpperCase(), `<div class="acct-menu">${it("profile", "Mi perfil", svg('<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>', 20))}${it("lists", "Listas", ico.list)}${it("discover", "Gente", svg('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 0 1 0 6M18 14c2 .8 3 2.6 3 6"/>', 20))}<button type="button" class="acct-item" data-action="check-update">${svg('<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/>', 20)}<span>Buscar actualizaciones <small>v${APP_VERSION}</small></span></button><button type="button" class="acct-item out" data-action="logout">${svg('<path d="M9 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h3M15 8l4 4-4 4M19 12H9"/>', 20)}<span>Cerrar sesión</span></button></div>`, async () => {});
+  openModal("Tu cuenta", "@" + me.username.toUpperCase(), `<div class="acct-menu">${it("profile", "Mi perfil", svg('<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>', 20))}${it("lists", "Listas", ico.list)}${it("discover", "Gente", svg('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 0 1 0 6M18 14c2 .8 3 2.6 3 6"/>', 20))}${canInstall() ? `<button type="button" class="acct-item" data-action="install">${svg('<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>', 20)}<span>Instalar app</span></button>` : ""}<button type="button" class="acct-item" data-action="check-update">${svg('<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/>', 20)}<span>Buscar actualizaciones <small>v${APP_VERSION}</small></span></button><button type="button" class="acct-item out" data-action="logout">${svg('<path d="M9 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h3M15 8l4 4-4 4M19 12H9"/>', 20)}<span>Cerrar sesión</span></button></div>`, async () => {});
 }
 $("#modal-close").onclick = () => $("#modal").classList.remove("open");
 $("#modal").onclick = (e) => {
@@ -1842,8 +1849,63 @@ document.addEventListener("submit", async (e) => {
     toast(err.message);
   }
 });
+// ---- Instalar la app en el celu ----
+let installEvt = null;
+const isStandalone = () => (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent || "") || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const canInstall = () => !isStandalone() && (!!installEvt || isIOS());
+function installDismissed() {
+  try {
+    return Date.now() - Number(localStorage.getItem("bookish.installDismissed") || 0) < 14 * 86400000;
+  } catch {
+    return false;
+  }
+}
+function installCardHtml() {
+  if (!canInstall() || installDismissed()) return "";
+  return `<section class="install-card"><div class="install-icon"><img src="/icons/icon-192.png" alt="" width="48" height="48"></div><div class="install-copy"><strong>Instalá Bookish en tu celu</strong><p>Se instala desde el navegador: sin tienda, sin descargas raras y sin permisos extra. Queda en tu pantalla de inicio como cualquier app.</p><div class="install-actions"><button class="button primary" data-action="install">${installEvt ? "Instalar" : "Cómo instalar"}</button><button class="text-btn" data-action="install-dismiss">Ahora no</button></div></div></section>`;
+}
+function syncInstallUi() {
+  const b = $("#install-btn");
+  if (b) b.hidden = !canInstall();
+}
+async function installApp() {
+  if (installEvt) {
+    const e = installEvt;
+    installEvt = null;
+    try {
+      await e.prompt();
+      const r = await e.userChoice;
+      if (r?.outcome !== "accepted") toast("Cuando quieras, la instalás desde el menú de tu cuenta.");
+    } catch {}
+    syncInstallUi();
+    if (currentPage === "home") refreshPage();
+    return;
+  }
+  if (isIOS())
+    openModal(
+      "Instalar Bookish",
+      "EN TU IPHONE O IPAD",
+      `<ol class="ios-steps"><li><span>1</span><div>Abrí Bookish en <strong>Safari</strong>.</div></li><li><span>2</span><div>Tocá el botón <strong>Compartir</strong> ${svg('<path d="M12 15V4M8 8l4-4 4 4M6 12H5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1h-1"/>', 20)} (abajo en el iPhone, arriba en el iPad).</div></li><li><span>3</span><div>Deslizá y tocá <strong>Agregar a pantalla de inicio</strong>.</div></li><li><span>4</span><div>Tocá <strong>Agregar</strong>. ¡Listo! Bookish queda como un ícono más.</div></li></ol><p class="quiet">Es una app web: no pasa por la App Store ni pide permisos del teléfono.</p>`,
+      async () => {},
+    );
+  else toast("Tu navegador no permite instalarla desde acá. Probá con Chrome.");
+}
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installEvt = e;
+  syncInstallUi();
+  if (currentPage === "home" && me) refreshPage();
+});
+window.addEventListener("appinstalled", () => {
+  installEvt = null;
+  syncInstallUi();
+  toast("¡Bookish quedó instalada!");
+  if (currentPage === "home") refreshPage();
+});
+syncInstallUi();
 // ---- App instalable (PWA) y botón "Actualizar" ----
-const APP_VERSION = "12";
+const APP_VERSION = "13";
 let swReg = null;
 function showUpdateBar() {
   if ($("#update-bar")) return;
